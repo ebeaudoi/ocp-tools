@@ -6,7 +6,7 @@
 
 **\- create-imagesetconfigfile.sh**
 
-\-- Edit the script and follow the instruction
+\  Edit the script and follow the instruction
 
 1 - Specify the version, ex: 4.12 or 4.13 or 4.14
 
@@ -28,7 +28,7 @@ Ouput:
 
 **\- findoperatorsreleasedetails.sh**
 
-\-- run the script with OCP release as parameter.
+\   run the script with OCP release as parameter.
 
 A menu will show up asking to choose the Operator.
 
@@ -44,7 +44,7 @@ Ouput:
 
 **\- findpruneoperatorsreleasedetails.sh**
 
-\-- Edit the script and follow the instruction
+\   Edit the script and follow the instruction
 
 1 - Specify the version, ex: 4.12 or 4.13 or 4.14
 
@@ -68,7 +68,7 @@ Output:
 
 Note: This script use “oc-mirror” command is much slower
 
-\-- Edit the script and update the variables:
+\   Edit the script and update the variables:
 
 OPERATORFROM: “From which registry the Operators are coming from”
 
