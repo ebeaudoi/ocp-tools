@@ -5,6 +5,7 @@
 **\- create-imagesetconfigfile.sh**
 
 Edit the script and follow the instruction
+
 1.  Specify the version, ex: 4.12 or 4.13 or 4.14
 2.  keep "uncomment" only the catalogs where the operator belong
 3.  Specify the operators - modify this list as required
