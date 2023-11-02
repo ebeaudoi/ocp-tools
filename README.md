@@ -68,13 +68,13 @@ Note: This script use “oc-mirror” command is much slower
 
 Edit the script and update the variables:
 
-OPERATORFROM: “From which registry the Operators are coming from”
+**OPERATORFROM**: “From which registry the Operators are coming from”
 
-CVERSION: “The OCP Version”
+**CVERSION**: “The OCP Version”
 
-CREGIS: “The Catalog being used”
+**CREGIS**: “The Catalog being used”
 
-KEEP: “All the operators that you want for that specific catalog”
+**KEEP**: “All the operators that you want for that specific catalog”
 
 Run the script:
 
