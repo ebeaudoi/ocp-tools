@@ -19,9 +19,11 @@ Ouput:
 
 \- imageset configuration file
 
+\-----------------------------------------------
+
   
 
-**\- findoperatorsreleasedetails.sh**
+**findoperatorsreleasedetails.sh**
 
 run the script with OCP release as parameter.
 
@@ -35,9 +37,11 @@ Ouput:
 
 \- Text file with operator, default channel and default channel’s releases
 
+\-----------------------------------------------
+
   
 
-**\- findpruneoperatorsreleasedetails.sh**
+**findpruneoperatorsreleasedetails.sh**
 
 Edit the script and follow the instruction
 
@@ -54,9 +58,11 @@ Output:
 
 \- Text file with Specific operator, default channel and default channel’s releases
 
+\-----------------------------------------------
+
   
 
-**\- ocmirror-generate-imagesetconfigurationyamlfile.sh**
+**ocmirror-generate-imagesetconfigurationyamlfile.sh**
 
 Note: This script use “oc-mirror” command is much slower
 
