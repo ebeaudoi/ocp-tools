@@ -26,6 +26,7 @@ Ouput:
 
   
 
+\-----------------------------------------------
 **\- findoperatorsreleasedetails.sh**
 
 run the script with OCP release as parameter.
@@ -42,6 +43,7 @@ Ouput:
 
   
 
+\-----------------------------------------------
 **\- findpruneoperatorsreleasedetails.sh**
 
 Edit the script and follow the instruction
@@ -56,7 +58,8 @@ Edit the script and follow the instruction
 
 Ex:
 
-./findpruneoperatorsreleasedetails.sh
+\-----------------------------------------------
+**\-./findpruneoperatorsreleasedetails.sh**
 
 Output:
 
@@ -64,6 +67,7 @@ Output:
 
   
 
+\-----------------------------------------------
 **\- ocmirror-generate-imagesetconfigurationyamlfile.sh**
 
 Note: This script use “oc-mirror” command is much slower
