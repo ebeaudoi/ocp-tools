@@ -2,7 +2,6 @@
 
 \-----------------------------------------------
 
-  
 
 **\- create-imagesetconfigfile.sh**
 
@@ -24,9 +23,10 @@ Ouput:
 
 \- imageset configuration file
 
-  
 
 \-----------------------------------------------
+
+
 **\- findoperatorsreleasedetails.sh**
 
 run the script with OCP release as parameter.
@@ -44,6 +44,7 @@ Ouput:
   
 
 \-----------------------------------------------
+
 
 **\- findpruneoperatorsreleasedetails.sh**
 
