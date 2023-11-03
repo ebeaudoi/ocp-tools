@@ -13,7 +13,7 @@ Edit the script and follow the instruction
 
 Ex:
 
-./create-imagesetconfigfile.sh 4.13
+./create-imagesetconfigfile.sh
 
 Ouput:
 
