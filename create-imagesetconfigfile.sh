@@ -9,6 +9,7 @@ shopt -s extglob
 
 # 1 - Specify the version, ex: 4.12 or 4.13 or 4.14
 OCP_VERSION=4.13
+
 # 2 - keep "uncomment" only the catalogs where the operator belong
 declare -A CATALOGS
 CATALOGS["redhat"]="registry.redhat.io/redhat/redhat-operator-index:v$OCP_VERSION"
@@ -69,7 +70,7 @@ do
   echo "mirror:" >>$OUTPUTFILENAME
   echo "  operators:" >>$OUTPUTFILENAME
   echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
-  echo "    targetCatalog: my-$catalog-v$OCP_VERSION-catalog" >>$OUTPUTFILENAME
+  echo "    targetCatalog: my-$catalog-catalog" >>$OUTPUTFILENAME
   echo "    packages:" >>$OUTPUTFILENAME
 
   for operator in $TMPDIR/configs/*;
