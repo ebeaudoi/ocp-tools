@@ -66,7 +66,7 @@ do
   echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
   echo "storageConfig:" >>$OUTPUTFILENAME
   echo "  local:" >>$OUTPUTFILENAME
-  echo "    path: ./metadata/$catalog-catalogs" >>$OUTPUTFILENAME
+  echo "    path: ./metadata/$catalog-catalogs-v$OCP_VERSION" >>$OUTPUTFILENAME
   echo "mirror:" >>$OUTPUTFILENAME
   echo "  operators:" >>$OUTPUTFILENAME
   echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
