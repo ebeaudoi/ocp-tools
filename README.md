@@ -1,5 +1,5 @@
 
-# **- create-imagesetconfigfile.sh**
+# **create-imagesetconfigfile.sh**
 ### Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
   with selected operators
@@ -23,7 +23,7 @@ Ouput:
 \- imageset configuration file
 
 
-#**findoperatorsreleasedetails.sh**
+# **findoperatorsreleasedetails.sh**
 
 ### Description: 
 - This script lists all the operators for a specific catalog
@@ -44,7 +44,7 @@ Ouput:
 
 \- Text file with operator, default channel and default channel’s releases
 
-#**findpruneoperatorsreleasedetails.sh**
+# **findpruneoperatorsreleasedetails.sh**
 
 ### Description: 
 - This script will list the default channel and the software release for
@@ -68,7 +68,7 @@ Output:
 \- Text file with Specific operator, default channel and default channel’s releases
 
 
-#**ocmirror-generate-imagesetconfigurationyamlfile.sh**
+# **ocmirror-generate-imagesetconfigurationyamlfile.sh**
 
 ### Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
