@@ -3,7 +3,7 @@
 \-----------------------------------------------
 
 **\- create-imagesetconfigfile.sh**
-Description: 
+# Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
   with selected operators
 - The configuration file will contain each selected operator with the default
@@ -25,7 +25,7 @@ Ouput:
 \- imageset configuration file
 
 \-----------------------------------------------
-Description: 
+# Description: 
 - This script lists all the operators for a specific catalog
   including their default channel and the software release for
   that channel
@@ -45,7 +45,7 @@ Ouput:
 \- Text file with operator, default channel and default channel’s releases
 
 \-----------------------------------------------
-Description: 
+# Description: 
 - This script will list the default channel and the software release for
   selected operators for a specific catalog
 
@@ -67,7 +67,7 @@ Output:
 \- Text file with Specific operator, default channel and default channel’s releases
 
 \-----------------------------------------------
-Description: 
+# Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
   with selected operators
 - The configuration file will contain each selected operator with the default
