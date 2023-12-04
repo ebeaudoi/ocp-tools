@@ -1,14 +1,12 @@
 
-\-----------------------------------------------
-
-**\- create-imagesetconfigfile.sh**
-# Description: 
+# **- create-imagesetconfigfile.sh**
+### Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
   with selected operators
 - The configuration file will contain each selected operator with the default
   channel and the latest release as "minVersion" and as "maxVersion"
   
-## Instructions
+### Instructions
 Edit the script and follow the instruction
 
 1.  Specify the version, ex: 4.12 or 4.13 or 4.14
@@ -24,16 +22,15 @@ Ouput:
 
 \- imageset configuration file
 
-\-----------------------------------------------
 
-**findoperatorsreleasedetails.sh**
+#**findoperatorsreleasedetails.sh**
 
-# Description: 
+### Description: 
 - This script lists all the operators for a specific catalog
   including their default channel and the software release for
   that channel
 
-## Instructions
+### Instructions
 
 run the script with OCP release as parameter.
 
@@ -47,16 +44,14 @@ Ouput:
 
 \- Text file with operator, default channel and default channel’s releases
 
-\-----------------------------------------------
+#**findpruneoperatorsreleasedetails.sh**
 
-**findpruneoperatorsreleasedetails.sh**
-
-# Description: 
+### Description: 
 - This script will list the default channel and the software release for
   selected operators for a specific catalog
 
 
-## Instructions
+### Instructions
 Edit the script and follow the instruction
 
 1.  Specify the version, ex: 4.12 or 4.13 or 4.14
@@ -72,11 +67,10 @@ Output:
 
 \- Text file with Specific operator, default channel and default channel’s releases
 
-\-----------------------------------------------
 
-**ocmirror-generate-imagesetconfigurationyamlfile.sh**
+#**ocmirror-generate-imagesetconfigurationyamlfile.sh**
 
-# Description: 
+### Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
   with selected operators
 - The configuration file will contain each selected operator with the default
@@ -84,7 +78,7 @@ Output:
 
   Note: This script use “oc-mirror” command is much slower
 
-## Instructions
+### Instructions
 Edit the script and update the variables:
 
 **OPERATORFROM**: “From which registry the Operators are coming from”
