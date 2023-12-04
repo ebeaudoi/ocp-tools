@@ -1,4 +1,3 @@
-**See below how to use the script:**
 
 \-----------------------------------------------
 
@@ -26,6 +25,7 @@ Ouput:
 \- imageset configuration file
 
 \-----------------------------------------------
+
 **findoperatorsreleasedetails.sh**
 
 # Description: 
@@ -48,6 +48,7 @@ Ouput:
 \- Text file with operator, default channel and default channel’s releases
 
 \-----------------------------------------------
+
 **findpruneoperatorsreleasedetails.sh**
 
 # Description: 
@@ -72,6 +73,7 @@ Output:
 \- Text file with Specific operator, default channel and default channel’s releases
 
 \-----------------------------------------------
+
 **ocmirror-generate-imagesetconfigurationyamlfile.sh**
 
 # Description: 
