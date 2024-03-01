@@ -1,0 +1,190 @@
+kind: ImageSetConfiguration
+apiVersion: mirror.openshift.io/v1alpha2
+storageConfig:
+  local:
+    path: ./metadata/redhat-catalog-v4.13
+mirror:
+  operators:
+  - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.13
+    targetCatalog: my-redhat-catalog-v4.13
+    packages:
+    - name: "advanced-cluster-management"
+      channels:
+      - name: "release-2.9"
+        minVersion: "advanced-cluster-management.v2.9.2"
+        maxVersion: "advanced-cluster-management.v2.9.2"
+    - name: "amq7-interconnect-operator"
+      channels:
+      - name: "1.10.x"
+        minVersion: "amq7-interconnect-operator.v1.10.9"
+        maxVersion: "amq7-interconnect-operator.v1.10.9"
+    - name: "amq-broker-rhel8"
+      channels:
+      - name: "7.11.x"
+        minVersion: "amq-broker-operator.v7.11.6-opr-2"
+        maxVersion: "amq-broker-operator.v7.11.6-opr-2"
+    - name: "amq-online"
+      channels:
+      - name: "stable"
+        minVersion: "amq-online.1.7.4-0.1657725339.p"
+        maxVersion: "amq-online.1.7.4-0.1657725339.p"
+    - name: "amq-streams"
+      channels:
+      - name: "stable"
+        minVersion: "amqstreams.v2.6.0-1"
+        maxVersion: "amqstreams.v2.6.0-1"
+    - name: "ansible-automation-platform-operator"
+      channels:
+      - name: "stable-2.4-cluster-scoped"
+        minVersion: "aap-operator.v2.4.0-0.1707507304"
+        maxVersion: "aap-operator.v2.4.0-0.1707507304"
+    - name: "ansible-cloud-addons-operator"
+      channels:
+      - name: "stable-2.4-cluster-scoped"
+        minVersion: "aca-operator.v2.4.0-0.1708439898"
+        maxVersion: "aca-operator.v2.4.0-0.1708439898"
+    - name: "cluster-logging"
+      channels:
+      - name: "stable-5.8"
+        minVersion: "cluster-logging.v5.8.3"
+        maxVersion: "cluster-logging.v5.8.3"
+    - name: "compliance-operator"
+      channels:
+      - name: "stable"
+        minVersion: "compliance-operator.v1.4.0"
+        maxVersion: "compliance-operator.v1.4.0"
+    - name: "datagrid"
+      channels:
+      - name: "8.4.x"
+        minVersion: "datagrid-operator.v8.4.8"
+        maxVersion: "datagrid-operator.v8.4.8"
+    - name: "devspaces"
+      channels:
+      - name: "stable"
+        minVersion: "devspacesoperator.v3.9.1"
+        maxVersion: "devspacesoperator.v3.9.1"
+    - name: "devworkspace-operator"
+      channels:
+      - name: "fast"
+        minVersion: "devworkspace-operator.v0.9.0"
+        maxVersion: "devworkspace-operator.v0.9.0"
+    - name: "eap"
+      channels:
+      - name: "stable"
+        minVersion: "eap-operator.v3.0.0"
+        maxVersion: "eap-operator.v3.0.0"
+    - name: "elasticsearch-operator"
+      channels:
+      - name: "stable-5.8"
+        minVersion: "elasticsearch-operator.v5.8.3"
+        maxVersion: "elasticsearch-operator.v5.8.3"
+    - name: "gatekeeper-operator-product"
+      channels:
+      - name: "stable"
+        minVersion: "gatekeeper-operator-product.v3.11.1"
+        maxVersion: "gatekeeper-operator-product.v3.11.1"
+    - name: "jws-operator"
+      channels:
+      - name: "alpha"
+        minVersion: "jws-operator.v2.0.9"
+        maxVersion: "jws-operator.v2.0.9"
+    - name: "kiali-ossm"
+      channels:
+      - name: "stable"
+        minVersion: "kiali-operator.v1.65.9"
+        maxVersion: "kiali-operator.v1.65.9"
+    - name: "local-storage-operator"
+      channels:
+      - name: "stable"
+        minVersion: "local-storage-operator.v4.13.0-202402081808"
+        maxVersion: "local-storage-operator.v4.13.0-202402081808"
+    - name: "mcg-operator"
+      channels:
+      - name: "stable-4.13"
+        minVersion: "mcg-operator.v4.13.7-rhodf"
+        maxVersion: "mcg-operator.v4.13.7-rhodf"
+    - name: "multicluster-engine"
+      channels:
+      - name: "stable-2.2"
+        minVersion: "multicluster-engine.v2.2.9"
+        maxVersion: "multicluster-engine.v2.2.9"
+    - name: "nfd"
+      channels:
+      - name: "stable"
+        minVersion: "nfd.4.13.0-202402081808"
+        maxVersion: "nfd.4.13.0-202402081808"
+    - name: "ocs-operator"
+      channels:
+      - name: "stable-4.13"
+        minVersion: "ocs-operator.v4.13.7-rhodf"
+        maxVersion: "ocs-operator.v4.13.7-rhodf"
+    - name: "odf-csi-addons-operator"
+      channels:
+      - name: "stable-4.13"
+        minVersion: "odf-csi-addons-operator.v4.13.7-rhodf"
+        maxVersion: "odf-csi-addons-operator.v4.13.7-rhodf"
+    - name: "odf-operator"
+      channels:
+      - name: "stable-4.13"
+        minVersion: "odf-operator.v4.13.7-rhodf"
+        maxVersion: "odf-operator.v4.13.7-rhodf"
+    - name: "odr-cluster-operator"
+      channels:
+      - name: "stable-4.13"
+        minVersion: "odr-cluster-operator.v4.13.7-rhodf"
+        maxVersion: "odr-cluster-operator.v4.13.7-rhodf"
+    - name: "odr-hub-operator"
+      channels:
+      - name: "stable-4.13"
+        minVersion: "odr-hub-operator.v4.13.7-rhodf"
+        maxVersion: "odr-hub-operator.v4.13.7-rhodf"
+    - name: "openshift-cert-manager-operator"
+      channels:
+      - name: "stable-v1"
+        minVersion: "cert-manager-operator.v1.13.0"
+        maxVersion: "cert-manager-operator.v1.13.0"
+    - name: "openshift-gitops-operator"
+      channels:
+      - name: "latest"
+        minVersion: "openshift-gitops-operator.v1.9.2"
+        maxVersion: "openshift-gitops-operator.v1.9.2"
+    - name: "openshift-pipelines-operator-rh"
+      channels:
+      - name: "latest"
+        minVersion: "openshift-pipelines-operator-rh.v1.14.0"
+        maxVersion: "openshift-pipelines-operator-rh.v1.14.0"
+    - name: "opentelemetry-product"
+      channels:
+      - name: "stable"
+        minVersion: "opentelemetry-operator.v0.93.0-2"
+        maxVersion: "opentelemetry-operator.v0.93.0-2"
+    - name: "quay-operator"
+      channels:
+      - name: "stable-3.10"
+        minVersion: "quay-operator.v3.10.4"
+        maxVersion: "quay-operator.v3.10.4"
+    - name: "redhat-oadp-operator"
+      channels:
+      - name: "stable-1.3"
+        minVersion: "oadp-operator.v1.3.0"
+        maxVersion: "oadp-operator.v1.3.0"
+    - name: "rhacs-operator"
+      channels:
+      - name: "stable"
+        minVersion: "rhacs-operator.v4.3.4"
+        maxVersion: "rhacs-operator.v4.3.4"
+    - name: "rhods-operator"
+      channels:
+      - name: "fast"
+        minVersion: "rhods-operator.2.7.0"
+        maxVersion: "rhods-operator.2.7.0"
+    - name: "rhsso-operator"
+      channels:
+      - name: "stable"
+        minVersion: "rhsso-operator.7.6.7-opr-001"
+        maxVersion: "rhsso-operator.7.6.7-opr-001"
+    - name: "servicemeshoperator"
+      channels:
+      - name: "stable"
+        minVersion: "servicemeshoperator.v2.4.5"
+        maxVersion: "servicemeshoperator.v2.4.5"
