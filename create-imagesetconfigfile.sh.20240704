@@ -8,7 +8,7 @@ shopt -s extglob
 # ** TO DO BEFORE TO RUN THE SCRIPT ** #
 
 # 1 - Specify the version, ex: 4.12 or 4.13 or 4.14
-OCP_VERSION=4.13
+OCP_VERSION=4.16
 
 # 2 - keep "uncomment" only the catalogs where the operator belong
 declare -A CATALOGS
@@ -60,7 +60,7 @@ do
   echo "Stage 2/2 - Generate the ImageSetConfiguration with all the Opertaors/version"
   COUNTOPS=1;
   NBOFOPERATORS=$(echo $KEEP|awk -F\| '{print NF}')
-  OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config.yaml"
+  OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config-$(date +%Y%m%d-%HH%M).yaml"
   # Create the header of the ImageSet configuration file
   echo "kind: ImageSetConfiguration" >$OUTPUTFILENAME
   echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
@@ -80,14 +80,20 @@ do
       OPNAME=$(jq -cs . $operator/catalog.json |jq .[0].name)
       OPDEFCHAN=$(jq -cs . $operator/catalog.json |jq .[0].defaultChannel)
       OPRELEASE=$(jq -cs . $operator/catalog.json |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
-      LATESTRELEASE=$(echo $OPRELEASE|awk '{print $NF}')
+      VERSION=""
+      for release in ${OPRELEASE[@]}
+      do
+        export release=$(echo $release|tr -d "\"")
+        VERSION="$VERSION $(jq -cs . $operator/catalog.json |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
+      done
+      LATESTRELEASE=$(echo $VERSION|awk '{print $NF}')
       echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
       ((COUNTOPS++))
       echo "    - name: $OPNAME" >>$OUTPUTFILENAME
       echo "      channels:" >>$OUTPUTFILENAME
       echo "      - name: $OPDEFCHAN" >>$OUTPUTFILENAME
       echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
-      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
+#      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
     else
       echo "catalog.json IS MISSING"
     fi

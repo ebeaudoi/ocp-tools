@@ -7,17 +7,20 @@ shopt -s extglob
 ########################################
 # ** TO DO BEFORE TO RUN THE SCRIPT ** #
 
-# 1 - Specify the version, ex: 4.12 or 4.13 or 4.14
-OCP_VERSION=4.13
+# 1 - oc-mirror version (v1 or v2)
+OCMIRRORVER=v2
 
-# 2 - keep "uncomment" only the catalogs where the operator belong
+# 2 - Specify the version, ex: 4.12 or 4.13 or 4.14
+OCP_VERSION=4.16
+
+# 3 - keep "uncomment" only the catalogs where the operator belong
 declare -A CATALOGS
 CATALOGS["redhat"]="registry.redhat.io/redhat/redhat-operator-index:v$OCP_VERSION"
 #CATALOGS["certified"]="registry.redhat.io/redhat/certified-operator-index:v$OCP_VERSION"
 #CATALOGS["community"]="registry.redhat.io/redhat/community-operator-index:v$OCP_VERSION"
 #CATALOGS["marketplace"]="registry.redhat.io/redhat/redhat-marketplace-index:v$OCP_VERSION"
 
-# 3 - Specify the operators - modify this list as required
+# 4 - Specify the operators - modify this list as required
 KEEP="elasticsearch-operator|eap|kiali-ossm|jws-operator|servicemeshoperator|odf-operator|opentelemetry-product|cluster-logging|advanced-cluster-management|openshift-gitops-operator|quay-operator|ansible-cloud-addons-operator|openshift-cert-manager-operator|ansible-automation-platform-operator|multicluster-engine|odf-csi-addons-operator|ocs-operator|mcg-operator|rhacs-operator|nfd|rhods-operator|rhsso-operator|local-storage-operator|devspaces|devworkspace-operator|amq-broker-rhel8|amq7-interconnect-operator|amq-online|amq-streams|compliance-operator|datagrid|gatekeeper-operator-product|odr-hub-operator|odr-cluster-operator|openshift-pipelines-operator-rh|redhat-oadp-operator"
 
 ########################################
@@ -60,13 +63,21 @@ do
   echo "Stage 2/2 - Generate the ImageSetConfiguration with all the Opertaors/version"
   COUNTOPS=1;
   NBOFOPERATORS=$(echo $KEEP|awk -F\| '{print NF}')
-  OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config-$(date +%Y%m%d-%HH%M).yaml"
+  OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%HH%M).yaml"
   # Create the header of the ImageSet configuration file
   echo "kind: ImageSetConfiguration" >$OUTPUTFILENAME
-  echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
-  echo "storageConfig:" >>$OUTPUTFILENAME
-  echo "  local:" >>$OUTPUTFILENAME
-  echo "    path: ./metadata/$catalog-catalog-v$OCP_VERSION" >>$OUTPUTFILENAME
+  if [ $OCMIRRORVER == v1 ]
+  then
+    echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
+    echo "storageConfig:" >>$OUTPUTFILENAME
+    echo "  local:" >>$OUTPUTFILENAME
+    echo "    path: ./metadata/$catalog-catalog-v$OCP_VERSION" >>$OUTPUTFILENAME
+  else
+    # oc-mirror version 2
+    # v1alpha2 -> v2alpha1
+    # Uses a cache system instead of metadata
+    echo "apiVersion: mirror.openshift.io/v2alpha1" >>$OUTPUTFILENAME
+  fi
   echo "mirror:" >>$OUTPUTFILENAME
   echo "  operators:" >>$OUTPUTFILENAME
   echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
