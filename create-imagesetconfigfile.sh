@@ -8,7 +8,7 @@ shopt -s extglob
 # ** TO DO BEFORE TO RUN THE SCRIPT ** #
 
 # 1 - oc-mirror version (v1 or v2)
-OCMIRRORVER=v2
+OCMIRRORVER=v1
 
 # 2 - Specify the version, ex: 4.12 or 4.13 or 4.14
 OCP_VERSION=4.16
