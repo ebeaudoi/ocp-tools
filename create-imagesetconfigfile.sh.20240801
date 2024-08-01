@@ -21,9 +21,8 @@ CATALOGS["redhat"]="registry.redhat.io/redhat/redhat-operator-index:v$OCP_VERSIO
 #CATALOGS["marketplace"]="registry.redhat.io/redhat/redhat-marketplace-index:v$OCP_VERSION"
 
 # 4 - Specify the operators - modify this list as required
+KEEP="elasticsearch-operator|eap|kiali-ossm|jws-operator|servicemeshoperator|odf-operator|opentelemetry-product|cluster-logging|advanced-cluster-management|openshift-gitops-operator|quay-operator|ansible-cloud-addons-operator|openshift-cert-manager-operator|ansible-automation-platform-operator|multicluster-engine|odf-csi-addons-operator|ocs-operator|mcg-operator|rhacs-operator|nfd|rhods-operator|rhsso-operator|local-storage-operator|devspaces|devworkspace-operator|amq-broker-rhel8|amq7-interconnect-operator|amq-online|amq-streams|compliance-operator|datagrid|gatekeeper-operator-product|odr-hub-operator|odr-cluster-operator|openshift-pipelines-operator-rh|redhat-oadp-operator"
 
-KEEP="elasticsearch-operator|kiali-ossm|servicemeshoperator|openshift-pipelines-operator-rh|serverless-operator|jaeger-product|rhods-operator"
-	
 ########################################
 ########################################
 
@@ -43,8 +42,6 @@ do
   TMPDIR=$(mktemp -d)
   echo "Create a temporary directory: $TMPDIR"
   echo ""
-  # Pull the catalog image to make sure you have the latest
-  podman pull ${CATALOGS[$catalog]}
   ID=$(podman run -d ${CATALOGS[$catalog]})
   echo "Run the catalog container, id: $ID"
   echo ""
@@ -100,8 +97,7 @@ do
         export release=$(echo $release|tr -d "\"")
         VERSION="$VERSION $(jq -cs . $operator/catalog.json |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
       done
-      SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)
-      LATESTRELEASE=$(echo $SRTDVERSION|awk '{print $NF}')
+      LATESTRELEASE=$(echo $VERSION|awk '{print $NF}')
       echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
       ((COUNTOPS++))
       echo "    - name: $OPNAME" >>$OUTPUTFILENAME
