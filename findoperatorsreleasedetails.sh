@@ -97,6 +97,13 @@ do
         OPNAME=$(jq -cs . $operator/catalog.json |jq .[0].name)
         OPDEFCHAN=$(jq -cs . $operator/catalog.json |jq .[0].defaultChannel)
         OPRELEASE=$(jq -cs . $operator/catalog.json |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
+        VERSION=""
+        for release in ${OPRELEASE[@]}
+        do
+          export release=$(echo $release|tr -d "\"")
+          VERSION="$VERSION $(jq -cs . $operator/catalog.json |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
+        done
+        SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)      
         if [ $ONELINEOUTPUT == "true" ]
         then
           echo ""
@@ -109,7 +116,7 @@ do
           echo "Operator: $OPNAME" |tee -a $OUTFILENAME
           echo "Default Channel: $OPDEFCHAN" |tee -a $OUTFILENAME
           echo "Releases:" |tee -a $OUTFILENAME
-          for release in $(echo $OPRELEASE);do echo $release |tee -a $OUTFILENAME;done
+          for srtrelease in $(echo $SRTDVERSION);do echo $srtrelease |tee -a $OUTFILENAME;done
         fi
       fi
     else
