@@ -84,7 +84,7 @@ do
   echo "mirror:" >>$OUTPUTFILENAME
   echo "  operators:" >>$OUTPUTFILENAME
   echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
-  echo "    targetCatalog: my-$catalog-catalog-v$OCP_VERSION" >>$OUTPUTFILENAME
+  echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
   echo "    packages:" >>$OUTPUTFILENAME
 
   for operator in $TMPDIR/configs/*;
