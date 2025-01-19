@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#VERSION 20250119-8h17
 #set -x
 set -e -o pipefail
 shopt -s extglob
@@ -89,29 +89,36 @@ do
 
   for operator in $TMPDIR/configs/*;
   do
+    JSONFILEPATH=""
     if [[ -f $operator/catalog.json ]]
     then
-      OPNAME=$(jq -cs . $operator/catalog.json |jq .[0].name)
-      OPDEFCHAN=$(jq -cs . $operator/catalog.json |jq .[0].defaultChannel)
-      OPRELEASE=$(jq -cs . $operator/catalog.json |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
-      VERSION=""
-      for release in ${OPRELEASE[@]}
-      do
-        export release=$(echo $release|tr -d "\"")
-        VERSION="$VERSION $(jq -cs . $operator/catalog.json |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
-      done
-      SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)
-      LATESTRELEASE=$(echo $SRTDVERSION|awk '{print $NF}')
-      echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
-      ((COUNTOPS++))
-      echo "    - name: $OPNAME" >>$OUTPUTFILENAME
-      echo "      channels:" >>$OUTPUTFILENAME
-      echo "      - name: $OPDEFCHAN" >>$OUTPUTFILENAME
-      echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
-#      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
+      JSONFILEPATH="$operator/catalog.json"
+    elif [[ -f $operator/index.json ]]
+    then
+      JSONFILEPATH="$operator/index.json"
     else
-      echo "catalog.json IS MISSING"
+      echo "NO catlog.json and NO index.json for operator $operator"
+      #ebdn
+      exit 1
     fi
+    OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
+    OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
+    OPRELEASE=$(jq -cs . $JSONFILEPATH |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
+    VERSION=""
+    for release in ${OPRELEASE[@]}
+    do
+      export release=$(echo $release|tr -d "\"")
+      VERSION="$VERSION $(jq -cs . $JSONFILEPATH |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
+    done
+    SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)
+    LATESTRELEASE=$(echo $SRTDVERSION|awk '{print $NF}')
+    echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
+    ((COUNTOPS++))
+    echo "    - name: $OPNAME" >>$OUTPUTFILENAME
+    echo "      channels:" >>$OUTPUTFILENAME
+    echo "      - name: $OPDEFCHAN" >>$OUTPUTFILENAME
+    echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
+#      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
   done
 
   #Destory the operator catalog container
