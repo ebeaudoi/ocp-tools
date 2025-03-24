@@ -122,7 +122,7 @@ do
   done
 
   #Destory the operator catalog container
-  podman rm -f $ID
+  podman rm --time 20 -f $ID
   # Cleanup the tmpdir
   echo " Cleanup the tmpdir"
   rm -r $TMPDIR
