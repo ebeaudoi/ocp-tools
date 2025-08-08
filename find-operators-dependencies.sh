@@ -8,10 +8,10 @@ shopt -s extglob
 # ** TO DO BEFORE TO RUN THE SCRIPT ** #
 
 # 1 - oc-mirror version (v1 or v2)
-OCMIRRORVER=v2
+OCMIRRORVER=v1
 
 # 2 - Specify the version, ex: 4.12 or 4.13 or 4.14
-OCP_VERSION=4.18
+OCP_VERSION=4.16
 
 # 3 - keep "uncomment" only the catalogs where the operator belong
 declare -A CATALOGS
@@ -22,8 +22,7 @@ CATALOGS["redhat"]="registry.redhat.io/redhat/redhat-operator-index:v$OCP_VERSIO
 
 # 4 - Specify the operators - modify this list as required
 
-KEEP="advanced-cluster-management"
-#KEEP="elasticsearch-operator|kiali-ossm|servicemeshoperator|openshift-pipelines-operator-rh|serverless-operator|jaeger-product|rhods-operator"
+KEEP="elasticsearch-operator|kiali-ossm|servicemeshoperator|openshift-pipelines-operator-rh|serverless-operator|jaeger-product|rhods-operator"
 	
 ########################################
 ########################################
@@ -62,35 +61,54 @@ do
   echo ""
 
   ######################################################
-  #Stage 2 - Generate the ImageSet configuration file ##
+  #Stage 2 - Generate the operators depencies list
   echo "***************************************************************************"
-  echo "Stage 2/2 - Generate the ImageSetConfiguration with all the Opertaors/version"
+  echo "Stage 2/2 - Generate the operators depencies list"
   COUNTOPS=1;
   NBOFOPERATORS=$(echo $KEEP|awk -F\| '{print NF}')
-  OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%HH%M).yaml"
+  OUTPUTFILENAME="opertors-dependencies-list-$catalog-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%HH%M).yaml"
   # Create the header of the ImageSet configuration file
-  echo "kind: ImageSetConfiguration" >$OUTPUTFILENAME
-  if [ $OCMIRRORVER == v1 ]
-  then
-    echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
-    echo "storageConfig:" >>$OUTPUTFILENAME
-    echo "  local:" >>$OUTPUTFILENAME
-    echo "    path: ./metadata/$catalog-catalog-v$OCP_VERSION" >>$OUTPUTFILENAME
-  else
-    # oc-mirror version 2
-    # v1alpha2 -> v2alpha1
-    # Uses a cache system instead of metadata
-    echo "apiVersion: mirror.openshift.io/v2alpha1" >>$OUTPUTFILENAME
-  fi
-  echo "mirror:" >>$OUTPUTFILENAME
-  echo "  operators:" >>$OUTPUTFILENAME
-  echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
-  echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
-  echo "    packages:" >>$OUTPUTFILENAME
+#  echo "kind: ImageSetConfiguration" >$OUTPUTFILENAME
+#  if [ $OCMIRRORVER == v1 ]
+#  then
+#    echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
+#    echo "storageConfig:" >>$OUTPUTFILENAME
+#    echo "  local:" >>$OUTPUTFILENAME
+#    echo "    path: ./metadata/$catalog-catalog-v$OCP_VERSION" >>$OUTPUTFILENAME
+#  else
+#    # oc-mirror version 2
+#    # v1alpha2 -> v2alpha1
+#    # Uses a cache system instead of metadata
+#    echo "apiVersion: mirror.openshift.io/v2alpha1" >>$OUTPUTFILENAME
+#  fi
+#  echo "mirror:" >>$OUTPUTFILENAME
+#  echo "  operators:" >>$OUTPUTFILENAME
+#  echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
+#  echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
+#  echo "    packages:" >>$OUTPUTFILENAME
 
+  #File header*
+  echo "#" >>$OUTPUTFILENAME
+echo "# -----------------------------------------------------------------------------     " >>$OUTPUTFILENAME
+echo "# File: find-operators-dependencies.sh" >>$OUTPUTFILENAME
+echo "# Author: Eric Beaudoin" >>$OUTPUTFILENAME
+echo "# Date: 2025-06-17" >>$OUTPUTFILENAME
+echo "# Version: 1.0.0" >>$OUTPUTFILENAME
+echo "# Last Modified: 2025-06-17" >>$OUTPUTFILENAME
+echo "#" >>$OUTPUTFILENAME
+echo "# Description:" >>$OUTPUTFILENAME
+echo "# This configuration file find the operator's dependencies for the given list." >>$OUTPUTFILENAME
+echo "#" >>$OUTPUTFILENAME
+echo "# Usage Notes:" >>$OUTPUTFILENAME
+echo "# - Make a local copy of this script" >>$OUTPUTFILENAME
+echo "# - Ensure it's executable (chmod +x find-operators-dependencies.sh)" >>$OUTPUTFILENAME
+echo "#" >>$OUTPUTFILENAME
+echo "# License: This is not an official tools and it is not supported " >>$OUTPUTFILENAME
+echo "#" >>$OUTPUTFILENAME
+
+  #For each operator, verify the depencies
   for operator in $TMPDIR/configs/*;
   do
-    #Depending of the operator's author, the FBC(File-based Catalogs) can be divided in multiple files
     JSONFILEPATH=""
     if [[ -f $operator/catalog.json ]]
     then
@@ -98,10 +116,6 @@ do
     elif [[ -f $operator/index.json ]]
     then
       JSONFILEPATH="$operator/index.json"
-    elif [[ -f $operator/package.json && -f $operator/channels.json && -f $operator/bundles.json ]]
-    then
-      cat $operator/package.json $operator/channels.json $operator/bundles.json > $operator/concatcatalog.json
-      JSONFILEPATH="$operator/concatcatalog.json"
     else
       echo "NO catlog.json and NO index.json for operator $operator"
       #ebdn
