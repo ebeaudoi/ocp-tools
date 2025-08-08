@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#VERSION 20250119-8h17
+#VERSION 20250808-10h52
 #set -x
 set -e -o pipefail
 shopt -s extglob
