@@ -1,3 +1,4 @@
+
 # **create-imagesetconfigfile.sh**
 ### Description: 
 - This script creates an imageSetConfiguration file for a specific catalog
@@ -28,4 +29,5 @@ Ex:
 Ouput:
 
 \- imageset configuration file
+
 
