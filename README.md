@@ -23,7 +23,7 @@ Edit the script and follow the instruction
   #CATALOGS["marketplace"]="registry.redhat.io/redhat/redhat-marketplace-index:v$OCP_VERSION"
   ~~~
 4.  Specify the operators - modify this list as required<br>
-  Split each operator using "|"<br>
+  - Split each operator using "|"<br>
   ex: KEEP="elasticsearch-operator|kiali-ossm|servicemeshoperator|openshift-pipelines-operator-rh"<br>
   <br>
 5. save and run the script
