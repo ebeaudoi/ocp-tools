@@ -65,6 +65,16 @@ do
   #Stage 2 - Generate the ImageSet configuration file ##
   echo "***************************************************************************"
   echo "Stage 2/2 - Generate the ImageSetConfiguration with all the Opertaors/version"
+  skipoperator="false"
+  # Verify if "yq" tool is installed
+  yqisinstalled=""
+  if command -v yq >/dev/null 2>&1; then
+    echo "yq is installed"
+    yqisinstalled="true"
+  else
+    echo "yq is not installed"
+    yqisinstalled="false"
+  fi
   COUNTOPS=1;
   NBOFOPERATORS=$(echo $KEEP|awk -F\| '{print NF}')
   OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%HH%M).yaml"
@@ -95,36 +105,73 @@ do
     if [[ -f $operator/catalog.json ]]
     then
       JSONFILEPATH="$operator/catalog.json"
+
+    elif [[ -f $operator/catalog.yaml  && yqisinstalled="true"]]
+    then
+      yq -o=json '.' $operator/catalog.yaml > $operator/output.json
+      JSONFILEPATH="$operator/output.json"
+
     elif [[ -f $operator/index.json ]]
     then
       JSONFILEPATH="$operator/index.json"
+
     elif [[ -f $operator/package.json && -f $operator/channels.json && -f $operator/bundles.json ]]
     then
       cat $operator/package.json $operator/channels.json $operator/bundles.json > $operator/concatcatalog.json
       JSONFILEPATH="$operator/concatcatalog.json"
+
     else
-      echo "NO catlog.json and NO index.json for operator $operator"
-      #ebdn
-      exit 1
+      if [[ -f $operator/catalog.yaml  && yqisinstalled="False"]]
+      then
+         echo "-------------- ERROR -------------------------"
+         echo "The operator $operator will not be configure"
+         echo "the 'yq' tool need to be installed"
+         echo ""
+         echo "         ~~~"
+         echo "# 1. Download the latest yq binary (Linux amd64)"
+         echo "sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq"
+         echo ""
+         echo "# 2. Make it executable"
+         echo "sudo chmod +x /usr/local/bin/yq"
+         echo ""
+         echo "# 3. Verify installation"
+         echo "yq --version"
+         echo ""
+         echo "~~~"
+         echo "----------------------------------------------"
+         skipoperator="true"
+      else
+#        echo "NO catlog.json and NO index.json for operator $operator"
+         echo "-------------- ERROR -------------------------"
+         echo "The operator $operator will not be configure"
+         echo "Catalog definition not found"
+         echo "----------------------------------------------"
+        skipoperator="true"
+#        exit 1
     fi
-    OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
-    OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
-    OPRELEASE=$(jq -cs . $JSONFILEPATH |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
-    VERSION=""
-    for release in ${OPRELEASE[@]}
-    do
-      export release=$(echo $release|tr -d "\"")
-      VERSION="$VERSION $(jq -cs . $JSONFILEPATH |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
-    done
-    SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)
-    LATESTRELEASE=$(echo $SRTDVERSION|awk '{print $NF}')
-    echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
-    ((COUNTOPS++))
-    echo "    - name: $OPNAME" >>$OUTPUTFILENAME
-    echo "      channels:" >>$OUTPUTFILENAME
-    echo "      - name: $OPDEFCHAN" >>$OUTPUTFILENAME
-    echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
+
+    if [[skipoperator="false"]]
+    then
+      OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
+      OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
+      OPRELEASE=$(jq -cs . $JSONFILEPATH |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
+      VERSION=""
+      for release in ${OPRELEASE[@]}
+      do
+        export release=$(echo $release|tr -d "\"")
+        VERSION="$VERSION $(jq -cs . $JSONFILEPATH |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
+      done
+      SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)
+      LATESTRELEASE=$(echo $SRTDVERSION|awk '{print $NF}')
+     echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
+      ((COUNTOPS++))
+      echo "    - name: $OPNAME" >>$OUTPUTFILENAME
+      echo "      channels:" >>$OUTPUTFILENAME
+      echo "      - name: $OPDEFCHAN" >>$OUTPUTFILENAME
+      echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
 #      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
+    fi
+    skipoperator="false"
   done
 
   #Destory the operator catalog container
