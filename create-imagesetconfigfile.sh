@@ -65,15 +65,15 @@ do
   #Stage 2 - Generate the ImageSet configuration file ##
   echo "***************************************************************************"
   echo "Stage 2/2 - Generate the ImageSetConfiguration with all the Opertaors/version"
-  skipoperator="false"
+  SKIPOPERATOR="false"
   # Verify if "yq" tool is installed
-  yqisinstalled=""
+  YQISINSTALLED=""
   if command -v yq >/dev/null 2>&1; then
     echo "yq is installed"
-    yqisinstalled="true"
+    YQISINSTALLED="true"
   else
     echo "yq is not installed"
-    yqisinstalled="false"
+    YQISINSTALLED="false"
   fi
   COUNTOPS=1;
   NBOFOPERATORS=$(echo $KEEP|awk -F\| '{print NF}')
@@ -106,7 +106,7 @@ do
     then
       JSONFILEPATH="$operator/catalog.json"
 
-    elif [[ -f $operator/catalog.yaml  && yqisinstalled="true"]]
+    elif [[ -f $operator/catalog.yaml  && YQISINSTALLED="true"]]
     then
       yq -o=json '.' $operator/catalog.yaml > $operator/output.json
       JSONFILEPATH="$operator/output.json"
@@ -121,7 +121,7 @@ do
       JSONFILEPATH="$operator/concatcatalog.json"
 
     else
-      if [[ -f $operator/catalog.yaml  && yqisinstalled="False"]]
+      if [[ -f $operator/catalog.yaml  && $YQISINSTALLED="False"]]
       then
          echo "-------------- ERROR -------------------------"
          echo "The operator $operator will not be configure"
@@ -139,18 +139,18 @@ do
          echo ""
          echo "~~~"
          echo "----------------------------------------------"
-         skipoperator="true"
+         SKIPOPERATOR="true"
       else
 #        echo "NO catlog.json and NO index.json for operator $operator"
          echo "-------------- ERROR -------------------------"
          echo "The operator $operator will not be configure"
          echo "Catalog definition not found"
          echo "----------------------------------------------"
-        skipoperator="true"
+        SKIPOPERATOR="true"
 #        exit 1
     fi
 
-    if [[skipoperator="false"]]
+    if [[$SKIPOPERATOR="false"]]
     then
       OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
       OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
@@ -171,7 +171,7 @@ do
       echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
 #      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
     fi
-    skipoperator="false"
+    SKIPOPERATOR="false"
   done
 
   #Destory the operator catalog container
