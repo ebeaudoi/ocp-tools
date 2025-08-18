@@ -146,8 +146,9 @@ do
          echo "The operator $operator will not be configure"
          echo "Catalog definition not found"
          echo "----------------------------------------------"
-        SKIPOPERATOR="true"
+         SKIPOPERATOR="true"
 #        exit 1
+      fi
     fi
 
     if [[ $SKIPOPERATOR="false" ]]
@@ -182,7 +183,7 @@ do
   #Re-initialize the variable
   ID=""
   TMPDIR=""
-
 done
+
 
 
