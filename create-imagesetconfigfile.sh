@@ -106,7 +106,7 @@ do
     then
       JSONFILEPATH="$operator/catalog.json"
 
-    elif [[ -f $operator/catalog.yaml  && $YQISINSTALLED="true" ]]
+    elif [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "true" ]]
     then
       yq -o=json '.' $operator/catalog.yaml > $operator/output.json
       JSONFILEPATH="$operator/output.json"
@@ -121,7 +121,7 @@ do
       JSONFILEPATH="$operator/concatcatalog.json"
 
     else
-      if [[ -f $operator/catalog.yaml  && $YQISINSTALLED="False" ]]
+      if [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "False" ]]
       then
          echo "-------------- ERROR -------------------------"
          echo "The operator $operator will not be configure"
@@ -151,7 +151,7 @@ do
       fi
     fi
 
-    if [[ $SKIPOPERATOR="false" ]]
+    if [[ $SKIPOPERATOR == "false" ]]
     then
       OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
       OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
