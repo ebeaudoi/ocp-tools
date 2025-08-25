@@ -106,7 +106,7 @@ do
     then
       JSONFILEPATH="$operator/catalog.json"
 
-    elif [[ -f $operator/catalog.yaml  && YQISINSTALLED="true" ]]
+    elif [[ -f $operator/catalog.yaml  && $YQISINSTALLED="true" ]]
     then
       yq -o=json '.' $operator/catalog.yaml > $operator/output.json
       JSONFILEPATH="$operator/output.json"
