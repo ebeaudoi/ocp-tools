@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#VERSION 20250829-14h54
+#VERSION 20250808-10h52
 #set -x
 set -e -o pipefail
 shopt -s extglob
@@ -11,7 +11,7 @@ shopt -s extglob
 OCMIRRORVER=v2
 
 # 2 - Specify the version, ex: 4.12 or 4.13 or 4.14
-OCP_VERSION=4.17
+OCP_VERSION=4.18
 
 # 3 - keep "uncomment" only the catalogs where the operator belong
 declare -A CATALOGS
@@ -21,12 +21,10 @@ CATALOGS["redhat"]="registry.redhat.io/redhat/redhat-operator-index:v$OCP_VERSIO
 #CATALOGS["marketplace"]="registry.redhat.io/redhat/redhat-marketplace-index:v$OCP_VERSION"
 
 # 4 - Specify the operators - modify this list as required
-KEEP="openshift-cert-manager-operator|cincinnati-operator|advanced-cluster-management|amq7-interconnect-operator|amq-broker-rhel8|amq-online|amq-streams|cluster-logging|compliance-operator|datagrid|eap|elasticsearch-operator|gatekeeper-operator-product|jaeger-product|jws-operator|kiali-ossm|local-storage-operator|loki-operator|mcg-operator|multicluster-engine|nfd|ocs-operator|odf-csi-addons-operator|odf-operator|odr-cluster-operator|odr-hub-operator|openshift-gitops-operator|openshift-pipelines-operator-rh|opentelemetry-product|quay-operator|redhat-oadp-operator|rhacs-operator|rhbk-operator|rhods-operator|rhsso-operator|serverless-operator|servicemeshoperator"
 
-#KEEP="cincinnati-operator|advanced-cluster-management|amq7-interconnect-operator|amq-broker-rhel8|amq-online|amq-streams|cluster-logging|compliance-operator|datagrid|eap|elasticsearch-operator|gatekeeper-operator-product|jaeger-product|jws-operator|kiali-ossm|local-storage-operator|loki-operator|mcg-operator|multicluster-engine|nfd|ocs-operator|odf-csi-addons-operator|odf-operator|odr-cluster-operator|odr-hub-operator|openshift-gitops-operator|openshift-pipelines-operator-rh|opentelemetry-product|quay-operator|redhat-oadp-operator|rhacs-operator|rhbk-operator|rhods-operator|rhsso-operator|serverless-operator|servicemeshoperator"
-#KEEP="advanced-cluster-management"
+KEEP="advanced-cluster-management"
 #KEEP="elasticsearch-operator|kiali-ossm|servicemeshoperator|openshift-pipelines-operator-rh|serverless-operator|jaeger-product|rhods-operator"
-
+	
 ########################################
 ########################################
 
@@ -35,7 +33,7 @@ KEEP="openshift-cert-manager-operator|cincinnati-operator|advanced-cluster-manag
 echo "***************************************************************************"
 echo "Stage 1/2 - Extract and prune the operators from the catalogs"
 # Extract the FBC data locally
-for catalog in ${!CATALOGS[@]}
+for catalog in ${!CATALOGS[@]} 
 do
   #Step 1 - Copy the catalog configuration file from the operator catalog container
   echo ""
@@ -100,17 +98,6 @@ do
   echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
   echo "    packages:" >>$OUTPUTFILENAME
 
-
-echo "DEBUG ------- list operators ----------"
-  OCOUNT=1;
-  for i in $TMPDIR/configs/*;
-  do
-    echo "$OCOUNT - $i";
-    let OCOUNT++;
-  done
-echo "DEBUG - END"
-
-
   for operator in $TMPDIR/configs/*;
   do
     #Depending of the operator's author, the FBC(File-based Catalogs) can be divided in multiple files
@@ -119,7 +106,7 @@ echo "DEBUG - END"
     then
       JSONFILEPATH="$operator/catalog.json"
 
-    elif [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "true" ]]
+    elif [[ -f $operator/catalog.yaml  && YQISINSTALLED="true" ]]
     then
       yq -o=json '.' $operator/catalog.yaml > $operator/output.json
       JSONFILEPATH="$operator/output.json"
@@ -128,34 +115,13 @@ echo "DEBUG - END"
     then
       JSONFILEPATH="$operator/index.json"
 
-    elif [[ -f $operator/package.yaml && -f $operator/channels.yaml && -f $operator/bundles.yaml ]]
-    then
-      cat $operator/package.yaml $operator/channels.yaml $operator/bundles.yaml > $operator/concatcatalog.yaml
-      yq -o=json '.' $operator/concatcatalog.yaml  > $operator/output.json
-      JSONFILEPATH="$operator/output.json"
-
     elif [[ -f $operator/package.json && -f $operator/channels.json && -f $operator/bundles.json ]]
     then
       cat $operator/package.json $operator/channels.json $operator/bundles.json > $operator/concatcatalog.json
       JSONFILEPATH="$operator/concatcatalog.json"
 
-    elif [[ -f $operator/package.json && -d $operator/channels && -d $operator/bundles ]]
-    then
-#      cat $operator/package.json >> $operator/concatcatalog.json
-#      find $operator/channels -type f -exec cat {} + >> $operator/concatcatalog.json
-#      find $operator/bundles -type f -exec cat {} + >> $operator/concatcatalog.json
-      find $operator -type f ! -name "concatcatalog.json" -exec cat {} + >> $operator/concatcatalog.json
-      JSONFILEPATH="$operator/concatcatalog.json"
-      echo "** Operator with directory **"
-
-    elif compgen -G "$operator/bundle*.json" > /dev/null && compgen -G "$operator/chann*.json" > /dev/null && compgen -G "$operator/pack*.json" > /dev/null
-    then
-      find $operator -type f ! -name "concatcatalog.json" -exec cat {} + >> $operator/concatcatalog.json
-      JSONFILEPATH="$operator/concatcatalog.json"
-      echo "** Operator with bundle with multiple name **"
-
     else
-      if [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "False" ]]
+      if [[ -f $operator/catalog.yaml  && $YQISINSTALLED="False" ]]
       then
          echo "-------------- ERROR -------------------------"
          echo "The operator $operator will not be configure"
@@ -185,13 +151,10 @@ echo "DEBUG - END"
       fi
     fi
 
-
-    if [[ $SKIPOPERATOR == "false" ]]
+    if [[ $SKIPOPERATOR="false" ]]
     then
-#      OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
-      OPNAME=$(jq -cs --arg SCHM "olm.package" '.[] | select(.schema == $SCHM)' $JSONFILEPATH | jq '.name')
-#      OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
-      OPDEFCHAN=$(jq -cs --arg SCHM "olm.package" '.[] | select(.schema == $SCHM)' $JSONFILEPATH | jq '.defaultChannel')
+      OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
+      OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
       OPRELEASE=$(jq -cs . $JSONFILEPATH |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
       VERSION=""
       for release in ${OPRELEASE[@]}
@@ -211,13 +174,16 @@ echo "DEBUG - END"
     fi
     SKIPOPERATOR="false"
   done
+
   #Destory the operator catalog container
   podman rm --time 20 -f $ID
   # Cleanup the tmpdir
   echo " Cleanup the tmpdir"
-#  rm -r $TMPDIR
+  rm -r $TMPDIR
   #Re-initialize the variable
   ID=""
   TMPDIR=""
 done
+
+
 
