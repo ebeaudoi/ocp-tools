@@ -1,226 +1,333 @@
 #!/usr/bin/env bash
-#VERSION 20250902-10h19
-#set -x
-set -e -o pipefail
-shopt -s extglob
-########################################
-########################################
-# ** TO DO BEFORE TO RUN THE SCRIPT ** #
+# VERSION 20250902-1312
+# Updated to improve robustness, readability, and efficiency by refactoring into functions.
+# Added colorized output for better logging visibility.
 
-# 1 - oc-mirror version (v1 or v2)
+# Exit immediately if a command exits with a non-zero status.
+set -e
+# Treat unset variables as an error.
+set -u
+# Prevent errors in a pipeline from being masked.
+set -o pipefail
+# Enable extended globbing for the pruning step.
+shopt -s extglob
+
+########################################
+########################################
+# ** CONFIGURATION ** #
+
+# 1 - oc-mirror version ('v1' or 'v2')
+# v1 uses a 'metadata' path, v2 uses a cache.
 OCMIRRORVER=v2
 
-# 2 - Specify the version, ex: 4.12 or 4.13 or 4.14
+# 2 - Specify the OpenShift Container Platform version, e.g., 4.15, 4.16
 OCP_VERSION=4.17
 
-# 3 - keep "uncomment" only the catalogs where the operator belong
+# 3 - Uncomment the catalogs containing the operators you need.
 declare -A CATALOGS
 CATALOGS["redhat"]="registry.redhat.io/redhat/redhat-operator-index:v$OCP_VERSION"
 #CATALOGS["certified"]="registry.redhat.io/redhat/certified-operator-index:v$OCP_VERSION"
 #CATALOGS["community"]="registry.redhat.io/redhat/community-operator-index:v$OCP_VERSION"
 #CATALOGS["marketplace"]="registry.redhat.io/redhat/redhat-marketplace-index:v$OCP_VERSION"
 
-# 4 - Specify the operators - modify this list as required
+# 4 - Specify the operators to keep, separated by a pipe '|'.
+# This string is used as a pattern for filtering.
 KEEP="openshift-cert-manager-operator|cincinnati-operator|advanced-cluster-management|amq7-interconnect-operator|amq-broker-rhel8|amq-online|amq-streams|cluster-logging|compliance-operator|datagrid|eap|elasticsearch-operator|gatekeeper-operator-product|jaeger-product|jws-operator|kiali-ossm|local-storage-operator|loki-operator|mcg-operator|multicluster-engine|nfd|ocs-operator|odf-csi-addons-operator|odf-operator|odr-cluster-operator|odr-hub-operator|openshift-gitops-operator|openshift-pipelines-operator-rh|opentelemetry-product|quay-operator|redhat-oadp-operator|rhacs-operator|rhbk-operator|rhods-operator|rhsso-operator|serverless-operator|servicemeshoperator"
 
-#KEEP="cincinnati-operator|advanced-cluster-management|amq7-interconnect-operator|amq-broker-rhel8|amq-online|amq-streams|cluster-logging|compliance-operator|datagrid|eap|elasticsearch-operator|gatekeeper-operator-product|jaeger-product|jws-operator|kiali-ossm|local-storage-operator|loki-operator|mcg-operator|multicluster-engine|nfd|ocs-operator|odf-csi-addons-operator|odf-operator|odr-cluster-operator|odr-hub-operator|openshift-gitops-operator|openshift-pipelines-operator-rh|opentelemetry-product|quay-operator|redhat-oadp-operator|rhacs-operator|rhbk-operator|rhods-operator|rhsso-operator|serverless-operator|servicemeshoperator"
-#KEEP="advanced-cluster-management"
-#KEEP="elasticsearch-operator|kiali-ossm|servicemeshoperator|openshift-pipelines-operator-rh|serverless-operator|jaeger-product|rhods-operator"
-
 ########################################
 ########################################
 
-###############################################################
-#Stage 1 - Extract and prune the operators from the catalogs ##
-echo "***************************************************************************"
-echo "Stage 1/2 - Extract and prune the operators from the catalogs"
-# Extract the FBC data locally
-for catalog in ${!CATALOGS[@]}
-do
-  #Step 1 - Copy the catalog configuration file from the operator catalog container
-  echo ""
-  echo "-----------------------------------------------------------------------"
-  echo "Copy the catalog's configuration file from the operator's catalog container"
-  echo "Working with the catalog: $catalog"
-  echo ""
-  TMPDIR=$(mktemp -d)
-  echo "Create a temporary directory: $TMPDIR"
-  echo ""
-  # Pull the catalog image to make sure you have the latest
-  podman pull ${CATALOGS[$catalog]}
-  ID=$(podman run -d ${CATALOGS[$catalog]})
-  echo "Run the catalog container, id: $ID"
-  echo ""
-  echo "Copy the catalog information to the temporary folder $TMPDIR"
-  echo ""
-  podman cp $ID:/configs $TMPDIR/configs
-  echo "Destroy the container - $ID"
-  echo ""
+# --- UTILITY FUNCTIONS ---
 
-  #Step 2 - Prune the catalog
-  echo ""
-  echo "Prune the catalog to keep only the desired operators"
-  (cd $TMPDIR/configs && rm -fr !($KEEP))
-  echo ""
+# Color definitions for logging output using ANSI-C quoting ($'...') to interpret escape sequences.
+readonly C_RESET=$'\033[0m'
+readonly C_RED=$'\033[0;31m'
+readonly C_GREEN=$'\033[0;32m'
+readonly C_YELLOW=$'\033[0;33m'
+readonly C_CYAN=$'\033[0;36m'
 
-  ######################################################
-  #Stage 2 - Generate the ImageSet configuration file ##
-  echo "***************************************************************************"
-  echo "Stage 2/2 - Generate the ImageSetConfiguration with all the Opertaors/version"
-  SKIPOPERATOR="false"
-  # Verify if "yq" tool is installed
-  YQISINSTALLED=""
-  if command -v yq >/dev/null 2>&1; then
-    echo "yq is installed"
-    YQISINSTALLED="true"
-  else
-    echo "yq is not installed"
-    YQISINSTALLED="false"
-  fi
-  COUNTOPS=1;
-  NBOFOPERATORS=$(echo $KEEP|awk -F\| '{print NF}')
-  OUTPUTFILENAME="$catalog-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%HH%M).yaml"
-  # Create the header of the ImageSet configuration file
-  echo "kind: ImageSetConfiguration" >$OUTPUTFILENAME
-  if [ $OCMIRRORVER == v1 ]
-  then
-    echo "apiVersion: mirror.openshift.io/v1alpha2" >>$OUTPUTFILENAME
-    echo "storageConfig:" >>$OUTPUTFILENAME
-    echo "  local:" >>$OUTPUTFILENAME
-    echo "    path: ./metadata/$catalog-catalog-v$OCP_VERSION" >>$OUTPUTFILENAME
-  else
-    # oc-mirror version 2
-    # v1alpha2 -> v2alpha1
-    # Uses a cache system instead of metadata
-    echo "apiVersion: mirror.openshift.io/v2alpha1" >>$OUTPUTFILENAME
-  fi
-  echo "mirror:" >>$OUTPUTFILENAME
-  echo "  operators:" >>$OUTPUTFILENAME
-  echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
-#  echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
-  echo "    targetCatalog: $catalog-catalog-index" >>$OUTPUTFILENAME
-  echo "    packages:" >>$OUTPUTFILENAME
+# Global variables for cleanup
+TMP_DIR=""
+CONTAINER_ID=""
 
-
-echo "------- list operators ----------"
-oldIFS=$IFS
-IFS=\|
-OCOUNT=1;
-#  for i in $TMPDIR/configs/*;
-  for i in $KEEP
-  do
-    echo "$OCOUNT - $i";
-    let OCOUNT++;
-  done
-IFS=$oldIFS
-echo ""
-echo "- Make sure this list match the match the next added operators list -"
-echo ""
-
-  for operator in $TMPDIR/configs/*;
-  do
-    #Depending of the operator's author, the FBC(File-based Catalogs) can be divided in multiple files
-    JSONFILEPATH=""
-    if [[ -f $operator/catalog.json ]]
-    then
-      JSONFILEPATH="$operator/catalog.json"
-
-    elif [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "true" ]]
-    then
-      yq -o=json '.' $operator/catalog.yaml > $operator/output.json
-      JSONFILEPATH="$operator/output.json"
-
-    elif [[ -f $operator/index.json ]]
-    then
-      JSONFILEPATH="$operator/index.json"
-
-    elif [[ -f $operator/package.yaml && -f $operator/channels.yaml && -f $operator/bundles.yaml ]]
-    then
-      cat $operator/package.yaml $operator/channels.yaml $operator/bundles.yaml > $operator/concatcatalog.yaml
-      yq -o=json '.' $operator/concatcatalog.yaml  > $operator/output.json
-      JSONFILEPATH="$operator/output.json"
-
-    elif [[ -f $operator/package.json && -f $operator/channels.json && -f $operator/bundles.json ]]
-    then
-      cat $operator/package.json $operator/channels.json $operator/bundles.json > $operator/concatcatalog.json
-      JSONFILEPATH="$operator/concatcatalog.json"
-
-    elif [[ -f $operator/package.json && -d $operator/channels && -d $operator/bundles ]]
-    then
-#      cat $operator/package.json >> $operator/concatcatalog.json
-#      find $operator/channels -type f -exec cat {} + >> $operator/concatcatalog.json
-#      find $operator/bundles -type f -exec cat {} + >> $operator/concatcatalog.json
-      find $operator -type f ! -name "concatcatalog.json" -exec cat {} + >> $operator/concatcatalog.json
-      JSONFILEPATH="$operator/concatcatalog.json"
-
-    elif compgen -G "$operator/bundle*.json" > /dev/null && compgen -G "$operator/chann*.json" > /dev/null && compgen -G "$operator/pack*.json" > /dev/null
-    then
-      find $operator -type f ! -name "concatcatalog.json" -exec cat {} + >> $operator/concatcatalog.json
-      JSONFILEPATH="$operator/concatcatalog.json"
-
+# Logging functions for clear, colorized output
+log_info() {
+    local message="$1"
+    local color_code="${2:-}" # Second argument is the color code, defaults to empty
+    
+    if [[ -n "$color_code" ]]; then
+        printf "%s%s%s\n" "$color_code" "$message" "$C_RESET"
     else
-      if [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "False" ]]
-      then
-         echo "-------------- ERROR -------------------------"
-         echo "The operator $operator will not be configure"
-         echo "the 'yq' tool need to be installed"
-         echo ""
-         echo "         ~~~"
-         echo "# 1. Download the latest yq binary (Linux amd64)"
-         echo "sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq"
-         echo ""
-         echo "# 2. Make it executable"
-         echo "sudo chmod +x /usr/local/bin/yq"
-         echo ""
-         echo "# 3. Verify installation"
-         echo "yq --version"
-         echo ""
-         echo "~~~"
-         echo "----------------------------------------------"
-         SKIPOPERATOR="true"
-      else
-#        echo "NO catlog.json and NO index.json for operator $operator"
-         echo "-------------- ERROR -------------------------"
-         echo "The operator $operator will not be configure"
-         echo "Catalog definition not found"
-         echo "----------------------------------------------"
-         SKIPOPERATOR="true"
-#        exit 1
-      fi
+        printf "%s\n" "$message"
+    fi
+}
+
+log_error() {
+    # Errors are always printed in red to stderr
+    printf "${C_RED}ERROR: %s${C_RESET}\n" "$@" >&2
+}
+
+# A pure Bash implementation of the 'basename' command to ensure portability.
+basename() {
+    local full_path="$1"
+    printf "%s" "${full_path##*/}"
+}
+
+# Lists the operators specified in the KEEP variable with line numbers.
+list_kept_operators() {
+    log_info "--- Operators specified in the KEEP variable ---" "$C_CYAN"
+    # Temporarily replace the pipe delimiter with a newline to list items,
+    # then use nl to add line numbers for readability.
+    echo "$KEEP" | tr '|' '\n' | nl
+    log_info "--------------------------------------------" "$C_CYAN"
+}
+
+# Ensures all required command-line tools are available.
+check_dependencies() {
+    log_info "Checking for required tools..."
+    local missing_deps=0
+    for cmd in podman jq yq; do
+        if ! command -v "$cmd" &>/dev/null; then
+            log_error "Command '$cmd' is not installed, but it is required."
+            missing_deps=1
+        fi
+    done
+
+    if [[ $missing_deps -eq 1 ]]; then
+        log_error "Please install missing dependencies and try again."
+        exit 1
+    fi
+    log_info "All dependencies are satisfied." "$C_GREEN"
+}
+
+# Cleanup function to be called on script exit.
+cleanup() {
+    if [[ -n "$CONTAINER_ID" ]]; then
+        log_info "Attempting to stop and remove container ID: $CONTAINER_ID"
+        podman rm --time 20 -f "$CONTAINER_ID" &>/dev/null || true
+    fi
+    if [[ -n "$TMP_DIR" && -d "$TMP_DIR" ]]; then
+        log_info "Cleaning up temporary directory: $TMP_DIR"
+        rm -rf "$TMP_DIR"
+    fi
+}
+
+# --- CATALOG PROCESSING FUNCTIONS ---
+
+# Sets up a temporary directory, pulls the catalog image, and prunes it.
+setup_and_prune_catalog() {
+    local catalog_url="$1"
+    
+    log_info "--> Stage 1/2: Extracting and pruning operators..." "$C_YELLOW"
+    
+    TMP_DIR=$(mktemp -d)
+    log_info "Created temporary directory: $TMP_DIR"
+    
+    log_info "Pulling the latest catalog image: $catalog_url"
+    podman pull "$catalog_url"
+    
+    CONTAINER_ID=$(podman run -d "$catalog_url")
+    log_info "Started temporary container with ID: $CONTAINER_ID"
+    
+    log_info "Copying catalog configs from container to $TMP_DIR/configs"
+    podman cp "$CONTAINER_ID:/configs" "$TMP_DIR/configs"
+    
+    podman rm --time 20 -f "$CONTAINER_ID"
+    CONTAINER_ID="" # Clear ID after removal
+    log_info "Container removed."
+
+    log_info "Pruning catalog to keep only specified operators..."
+    (cd "$TMP_DIR/configs" && rm -rf !($KEEP))
+}
+
+# Creates the initial header for the ImageSetConfiguration YAML file.
+create_imageset_header() {
+    local output_filename="$1"
+    local catalog_name="$2"
+    local catalog_url="$3"
+
+    log_info "--> Stage 2/2: Generating ImageSetConfiguration file..." "$C_YELLOW"
+    {
+        printf "kind: ImageSetConfiguration\n"
+        if [[ "$OCMIRRORVER" == "v1" ]]; then
+            printf "apiVersion: mirror.openshift.io/v1alpha2\n"
+            printf "storageConfig:\n"
+            printf "  local:\n"
+            printf "    path: ./metadata/%s-catalog-v%s\n" "$catalog_name" "$OCP_VERSION"
+        else # v2
+            printf "apiVersion: mirror.openshift.io/v2alpha1\n"
+        fi
+        printf "mirror:\n"
+        printf "  operators:\n"
+        printf "  - catalog: %s\n" "$catalog_url"
+        printf "    targetCatalog: %s-catalog-index\n" "$catalog_name"
+        printf "    packages:\n"
+    } > "$output_filename"
+}
+
+# Parses various File-Based Catalog (FBC) formats and returns a unified JSON stream.
+# This version is more efficient by finding all files first and then processing them in a single command.
+get_catalog_json_stream() {
+    local operator_dir="$1"
+
+    # Find all relevant files once. Use an array to handle spaces in filenames.
+    local files=()
+    while IFS= read -r -d $'\0'; do
+        files+=("$REPLY")
+    done < <(find "$operator_dir" -type f \( -name '*.json' -o -name '*.yaml' \) -print0)
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        log_error "No catalog files (json/yaml) found in $operator_dir"
+        return 1
     fi
 
+    # Check if any YAML files are present in the list.
+    local has_yaml=false
+    for file in "${files[@]}"; do
+        if [[ "$file" == *.yaml ]]; then
+            has_yaml=true
+            break
+        fi
+    done
 
-    if [[ $SKIPOPERATOR == "false" ]]
-    then
-#      OPNAME=$(jq -cs . $JSONFILEPATH |jq .[0].name)
-      OPNAME=$(jq -cs --arg SCHM "olm.package" '.[] | select(.schema == $SCHM)' $JSONFILEPATH | jq '.name')
-#      OPDEFCHAN=$(jq -cs . $JSONFILEPATH |jq .[0].defaultChannel)
-      OPDEFCHAN=$(jq -cs --arg SCHM "olm.package" '.[] | select(.schema == $SCHM)' $JSONFILEPATH | jq '.defaultChannel')
-      OPRELEASE=$(jq -cs . $JSONFILEPATH |jq ".[] |select(.name==$OPDEFCHAN)"|jq .entries[].name)
-      VERSION=""
-      for release in ${OPRELEASE[@]}
-      do
-        export release=$(echo $release|tr -d "\"")
-        VERSION="$VERSION $(jq -cs . $JSONFILEPATH |jq -r --arg n "$release" '.[]|select(.name == $n)'|jq '.properties[] |select(.type=="olm.package")'|jq .value.version)"
-      done
-      SRTDVERSION=$(for num in $VERSION; do echo "$num"; done|sort -V)
-      LATESTRELEASE=$(echo $SRTDVERSION|awk '{print $NF}')
-     echo "$COUNTOPS/$NBOFOPERATORS -- Adding operator=$OPNAME with channel=$OPDEFCHAN and version $LATESTRELEASE"
-      ((COUNTOPS++))
-      echo "    - name: $OPNAME" >>$OUTPUTFILENAME
-      echo "      channels:" >>$OUTPUTFILENAME
-      echo "      - name: $OPDEFCHAN" >>$OUTPUTFILENAME
-      echo "        minVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
-#      echo "        maxVersion: $LATESTRELEASE" >>$OUTPUTFILENAME
+    # If YAML files are present, yq is required and can handle both formats.
+    # Otherwise, jq is sufficient and more robust for JSON streams.
+    if [[ "$has_yaml" == true ]]; then
+        # Process all files with yq. It reads multiple files and outputs a stream of JSON objects.
+        yq -o=json '.' "${files[@]}" 2>/dev/null
+    else
+        # Process all JSON files with jq.
+        jq '.' "${files[@]}" 2>/dev/null
     fi
-    SKIPOPERATOR="false"
-  done
-  #Destory the operator catalog container
-  podman rm --time 20 -f $ID
-  # Cleanup the tmpdir
-  echo " Cleanup the tmpdir"
-#  rm -r $TMPDIR
-  #Re-initialize the variable
-  ID=""
-  TMPDIR=""
-done
+}
+
+# Extracts key operator metadata from a JSON stream.
+get_operator_metadata() {
+    local json_stream="$1"
+    jq -s '
+        (map(select(.schema == "olm.package"))[0]) as $pkg |
+        (map(select(.schema == "olm.channel" and .name == $pkg.defaultChannel ))[0]) as $channel |
+        (map(select(.schema == "olm.bundle" and .name == $channel.entries[-1].name ))[0]) as $bundle |
+        ($bundle.properties | map(select(.type == "olm.package"))[0].value.version) as $version |
+        {
+            opName: $pkg.name,
+            defChan: $pkg.defaultChannel,
+            latestVersion: $version
+        }
+    ' <<< "$json_stream"
+}
+
+# Compares the KEEP list against the actual directories found after pruning and logs any missing operators.
+verify_operators_found() {
+    # Create an associative array for efficient lookup of found operator basenames.
+    declare -A found_operators
+    for dir_path in "$@"; do
+        if [[ -d "$dir_path" ]]; then
+            found_operators["$(basename "$dir_path")"]=1
+        fi
+    done
+
+    log_info "Verifying that all specified operators were found in the catalog..."
+    # Iterate over each operator in the KEEP variable.
+    echo "$KEEP" | tr '|' '\n' | while IFS= read -r operator; do
+        [[ -z "$operator" ]] && continue
+        
+        # Check if the operator from the KEEP list exists in our associative array of found directories.
+        if [[ ! -v "found_operators[$operator]" ]]; then
+            log_error "WARNING: Operator '$operator' from the KEEP list was not found in the catalog and will be skipped."
+        fi
+    done
+    log_info "Verification complete."
+}
+
+# Iterates through operator directories and processes them.
+process_operators() {
+    local output_filename="$1"
+
+    local operator_dirs=("$TMP_DIR"/configs/*)
+    
+    # Verify that the operators we expect to find are actually present.
+    verify_operators_found "${operator_dirs[@]}"
+    
+    local total_ops=${#operator_dirs[@]}
+    local current_op=0
+    
+    log_info "Found $(find "$TMP_DIR/configs" -mindepth 1 -maxdepth 1 -type d | wc -l) operators to process."
+    
+    for operator_dir in "${operator_dirs[@]}"; do
+        let current_op+=1
+        local operator_basename
+        operator_basename=$(basename "$operator_dir")
+        
+        log_info "--- Processing ($current_op/$total_ops): $operator_basename ---"
+        
+        local json_stream
+        json_stream=$(get_catalog_json_stream "$operator_dir")
+        
+        if [[ -z "$json_stream" ]]; then
+            log_error "Could not generate a JSON stream for $operator_basename. Skipping."
+            continue
+        fi
+        
+        local metadata
+        metadata=$(get_operator_metadata "$json_stream")
+        
+        if [[ -z "$metadata" || "$metadata" == "null" ]]; then
+            log_error "Failed to extract metadata for $operator_basename. Skipping."
+            continue
+        fi
+
+        local op_name def_chan latest_version
+        op_name=$(jq -r '.opName' <<< "$metadata")
+        def_chan=$(jq -r '.defChan' <<< "$metadata")
+        latest_version=$(jq -r '.latestVersion' <<< "$metadata")
+        
+        log_info "    Adding: name='$op_name', channel='$def_chan', minVersion='$latest_version'"
+        
+        # Append the operator details to the output file
+        {
+            printf "    - name: %s\n" "$op_name"
+            printf "      channels:\n"
+            printf "      - name: %s\n" "$def_chan"
+            printf "        minVersion: %s\n" "$latest_version"
+        } >> "$output_filename"
+    done
+    
+    log_info "Successfully generated ImageSetConfiguration: $output_filename" "$C_GREEN"
+}
+
+
+# --- MAIN EXECUTION ---
+main() {
+    trap cleanup EXIT
+    
+    check_dependencies
+    list_kept_operators
+    
+    if [ ${#CATALOGS[@]} -eq 0 ]; then
+        log_error "No catalogs are defined. Please uncomment at least one catalog in the configuration section."
+        exit 1
+    fi
+    
+    for catalog_name in "${!CATALOGS[@]}"; do
+        local catalog_url="${CATALOGS[$catalog_name]}"
+        log_info ""
+        log_info "***************************************************************************" "$C_YELLOW"
+        log_info "Processing catalog: $catalog_name" "$C_YELLOW"
+        log_info "***************************************************************************" "$C_YELLOW"
+        
+        setup_and_prune_catalog "$catalog_url"
+        
+        local output_filename="$catalog_name-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%H%M).yaml"
+        create_imageset_header "$output_filename" "$catalog_name" "$catalog_url"
+        
+        process_operators "$output_filename"
+    done
+    
+    log_info ""
+    log_info "Script finished successfully." "$C_GREEN"
+}
+
+# Run the main function
+main
+

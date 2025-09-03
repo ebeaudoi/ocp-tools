@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#VERSION 20250829-14h54
+#VERSION 20250902-10h19
 #set -x
 set -e -o pipefail
 shopt -s extglob
@@ -97,19 +97,25 @@ do
   echo "mirror:" >>$OUTPUTFILENAME
   echo "  operators:" >>$OUTPUTFILENAME
   echo "  - catalog: ${CATALOGS[$catalog]}" >>$OUTPUTFILENAME
-  echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
+#  echo "    targetCatalog: my-$catalog-catalog-v$(echo $OCP_VERSION| tr -d '.')" >>$OUTPUTFILENAME
+  echo "    targetCatalog: $catalog-catalog-index" >>$OUTPUTFILENAME
   echo "    packages:" >>$OUTPUTFILENAME
 
 
-echo "DEBUG ------- list operators ----------"
-  OCOUNT=1;
-  for i in $TMPDIR/configs/*;
+echo "------- list operators ----------"
+oldIFS=$IFS
+IFS=\|
+OCOUNT=1;
+#  for i in $TMPDIR/configs/*;
+  for i in $KEEP
   do
     echo "$OCOUNT - $i";
     let OCOUNT++;
   done
-echo "DEBUG - END"
-
+IFS=$oldIFS
+echo ""
+echo "- Make sure this list match the match the next added operators list -"
+echo ""
 
   for operator in $TMPDIR/configs/*;
   do
@@ -146,13 +152,11 @@ echo "DEBUG - END"
 #      find $operator/bundles -type f -exec cat {} + >> $operator/concatcatalog.json
       find $operator -type f ! -name "concatcatalog.json" -exec cat {} + >> $operator/concatcatalog.json
       JSONFILEPATH="$operator/concatcatalog.json"
-      echo "** Operator with directory **"
 
     elif compgen -G "$operator/bundle*.json" > /dev/null && compgen -G "$operator/chann*.json" > /dev/null && compgen -G "$operator/pack*.json" > /dev/null
     then
       find $operator -type f ! -name "concatcatalog.json" -exec cat {} + >> $operator/concatcatalog.json
       JSONFILEPATH="$operator/concatcatalog.json"
-      echo "** Operator with bundle with multiple name **"
 
     else
       if [[ -f $operator/catalog.yaml  && $YQISINSTALLED == "False" ]]
@@ -220,4 +224,3 @@ echo "DEBUG - END"
   ID=""
   TMPDIR=""
 done
-

@@ -1,21 +1,7 @@
-Of course. Here is the updated version of your bash script.
-
-This revised script incorporates modern shell scripting practices for improved readability, robustness, and maintainability while preserving the original functionality.
-
-### Key Improvements:
-
-  * **Dependency Check:** It now checks for all required tools (`podman`, `jq`, `yq`) at the very beginning.
-  * **Error Handling & Cleanup:** The script uses `trap` to ensure that temporary files and containers are always cleaned up, even if an error occurs.
-  * **Refactored Logic:** The main logic is organized into functions (`main`, `log_info`, `check_dependencies`, `process_catalog`, etc.) to improve clarity.
-  * **Efficient Metadata Extraction:** The process of finding an operator's default channel and latest version has been completely rewritten. It now uses a single, efficient `jq` command to parse the catalog metadata, replacing the complex and less efficient series of commands from the original script.
-  * **Code Style:** The script now follows common best practices, including using `set -uo pipefail`, quoting variables, and using `printf` for more reliable output.
-
------
-
-```bash
 #!/usr/bin/env bash
 # VERSION 20250902-1312
-# Updated to improve robustness, readability, and efficiency.
+# Updated to improve robustness, readability, and efficiency by refactoring into functions.
+# Added colorized output for better logging visibility.
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
@@ -51,17 +37,49 @@ KEEP="openshift-cert-manager-operator|cincinnati-operator|advanced-cluster-manag
 ########################################
 ########################################
 
+# --- UTILITY FUNCTIONS ---
+
+# Color definitions for logging output using ANSI-C quoting ($'...') to interpret escape sequences.
+readonly C_RESET=$'\033[0m'
+readonly C_RED=$'\033[0;31m'
+readonly C_GREEN=$'\033[0;32m'
+readonly C_YELLOW=$'\033[0;33m'
+readonly C_CYAN=$'\033[0;36m'
+
 # Global variables for cleanup
 TMP_DIR=""
 CONTAINER_ID=""
 
-# Logging functions for clear output
+# Logging functions for clear, colorized output
 log_info() {
-    printf "%s\n" "$@"
+    local message="$1"
+    local color_code="${2:-}" # Second argument is the color code, defaults to empty
+    
+    if [[ -n "$color_code" ]]; then
+        printf "%s%s%s\n" "$color_code" "$message" "$C_RESET"
+    else
+        printf "%s\n" "$message"
+    fi
 }
 
 log_error() {
-    printf "ERROR: %s\n" "$@" >&2
+    # Errors are always printed in red to stderr
+    printf "${C_RED}ERROR: %s${C_RESET}\n" "$@" >&2
+}
+
+# A pure Bash implementation of the 'basename' command to ensure portability.
+basename() {
+    local full_path="$1"
+    printf "%s" "${full_path##*/}"
+}
+
+# Lists the operators specified in the KEEP variable with line numbers.
+list_kept_operators() {
+    log_info "--- Operators specified in the KEEP variable ---" "$C_CYAN"
+    # Temporarily replace the pipe delimiter with a newline to list items,
+    # then use nl to add line numbers for readability.
+    echo "$KEEP" | tr '|' '\n' | nl
+    log_info "--------------------------------------------" "$C_CYAN"
 }
 
 # Ensures all required command-line tools are available.
@@ -79,7 +97,7 @@ check_dependencies() {
         log_error "Please install missing dependencies and try again."
         exit 1
     fi
-    log_info "All dependencies are satisfied."
+    log_info "All dependencies are satisfied." "$C_GREEN"
 }
 
 # Cleanup function to be called on script exit.
@@ -94,74 +112,13 @@ cleanup() {
     fi
 }
 
-# Parses various File-Based Catalog (FBC) formats and returns a unified JSON stream.
-# This function handles different layouts authors use for their operator catalogs.
-get_catalog_json_stream() {
-    local operator_dir="$1"
+# --- CATALOG PROCESSING FUNCTIONS ---
 
-    # Handle different FBC structures
-    if [[ -f "$operator_dir/catalog.json" ]]; then
-        cat "$operator_dir/catalog.json"
-    elif [[ -f "$operator_dir/catalog.yaml" ]]; then
-        yq -o=json '.' "$operator_dir/catalog.yaml"
-    elif [[ -f "$operator_dir/index.json" ]]; then
-        cat "$operator_dir/index.json"
-    elif [[ -f "$operator_dir/package.yaml" && -f "$operator_dir/channels.yaml" && -f "$operator_dir/bundles.yaml" ]]; then
-        yq -o=json '.' "$operator_dir/package.yaml" "$operator_dir/channels.yaml" "$operator_dir/bundles.yaml"
-    elif [[ -f "$operator_dir/package.json" && -f "$operator_dir/channels.json" && -f "$operator_dir/bundles.json" ]]; then
-        jq -s '.' "$operator_dir/package.json" "$operator_dir/channels.json" "$operator_dir/bundles.json"
-    elif [[ -d "$operator_dir" ]]; then
-        # Generic fallback for directories with multiple json/yaml files
-        local files
-        files=$(find "$operator_dir" -type f \( -name '*.json' -o -name '*.yaml' \))
-        if [[ -n "$files" ]]; then
-            yq -o=json -s '.' $files
-        else
-            log_error "No catalog files found in $operator_dir"
-            return 1
-        fi
-    else
-        log_error "Cannot determine catalog format for $operator_dir"
-        return 1
-    fi
-}
-
-# Extracts operator metadata using a single, efficient jq query.
-get_operator_metadata() {
-    local json_stream="$1"
+# Sets up a temporary directory, pulls the catalog image, and prunes it.
+setup_and_prune_catalog() {
+    local catalog_url="$1"
     
-    # This query finds the package, its default channel, the latest bundle in that channel,
-    # and extracts the semantic version from that bundle's properties.
-    jq -s '
-        # Find the main package definition
-        (map(select(.schema == "olm.package"))[0]) as $pkg |
-        # Find the channel that matches the package default
-        (map(select(.schema == "olm.channel" and .name == $pkg.defaultChannel ))[0]) as $channel |
-        # Find the bundle corresponding to the last (latest) entry in the channel
-        (map(select(.schema == "olm.bundle" and .name == $channel.entries[-1].name ))[0]) as $bundle |
-        # Extract the version from the bundle properties
-        ($bundle.properties | map(select(.type == "olm.package"))[0].value.version) as $version |
-        # Output the required fields as a single JSON object
-        {
-            opName: $pkg.name,
-            defChan: $pkg.defaultChannel,
-            latestVersion: $version
-        }
-    ' <<< "$json_stream"
-}
-
-# Main processing function for a single catalog.
-process_catalog() {
-    local catalog_name="$1"
-    local catalog_url="$2"
-    
-    log_info ""
-    log_info "***************************************************************************"
-    log_info "Processing catalog: $catalog_name"
-    log_info "***************************************************************************"
-    
-    ## Stage 1: Extract and prune the operators from the catalog ##
-    log_info "--> Stage 1/2: Extracting and pruning operators..."
+    log_info "--> Stage 1/2: Extracting and pruning operators..." "$C_YELLOW"
     
     TMP_DIR=$(mktemp -d)
     log_info "Created temporary directory: $TMP_DIR"
@@ -181,13 +138,15 @@ process_catalog() {
 
     log_info "Pruning catalog to keep only specified operators..."
     (cd "$TMP_DIR/configs" && rm -rf !($KEEP))
-    
-    ## Stage 2: Generate the ImageSet configuration file ##
-    log_info "--> Stage 2/2: Generating ImageSetConfiguration file..."
-    
-    local output_filename="$catalog_name-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%H%M).yaml"
-    
-    # Create the header of the ImageSet configuration file
+}
+
+# Creates the initial header for the ImageSetConfiguration YAML file.
+create_imageset_header() {
+    local output_filename="$1"
+    local catalog_name="$2"
+    local catalog_url="$3"
+
+    log_info "--> Stage 2/2: Generating ImageSetConfiguration file..." "$C_YELLOW"
     {
         printf "kind: ImageSetConfiguration\n"
         if [[ "$OCMIRRORVER" == "v1" ]]; then
@@ -204,15 +163,99 @@ process_catalog() {
         printf "    targetCatalog: %s-catalog-index\n" "$catalog_name"
         printf "    packages:\n"
     } > "$output_filename"
-    
+}
+
+# Parses various File-Based Catalog (FBC) formats and returns a unified JSON stream.
+# This version is more efficient by finding all files first and then processing them in a single command.
+get_catalog_json_stream() {
+    local operator_dir="$1"
+
+    # Find all relevant files once. Use an array to handle spaces in filenames.
+    local files=()
+    while IFS= read -r -d $'\0'; do
+        files+=("$REPLY")
+    done < <(find "$operator_dir" -type f \( -name '*.json' -o -name '*.yaml' \) -print0)
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        log_error "No catalog files (json/yaml) found in $operator_dir"
+        return 1
+    fi
+
+    # Check if any YAML files are present in the list.
+    local has_yaml=false
+    for file in "${files[@]}"; do
+        if [[ "$file" == *.yaml ]]; then
+            has_yaml=true
+            break
+        fi
+    done
+
+    # If YAML files are present, yq is required and can handle both formats.
+    # Otherwise, jq is sufficient and more robust for JSON streams.
+    if [[ "$has_yaml" == true ]]; then
+        # Process all files with yq. It reads multiple files and outputs a stream of JSON objects.
+        yq -o=json '.' "${files[@]}" 2>/dev/null
+    else
+        # Process all JSON files with jq.
+        jq '.' "${files[@]}" 2>/dev/null
+    fi
+}
+
+# Extracts key operator metadata from a JSON stream.
+get_operator_metadata() {
+    local json_stream="$1"
+    jq -s '
+        (map(select(.schema == "olm.package"))[0]) as $pkg |
+        (map(select(.schema == "olm.channel" and .name == $pkg.defaultChannel ))[0]) as $channel |
+        (map(select(.schema == "olm.bundle" and .name == $channel.entries[-1].name ))[0]) as $bundle |
+        ($bundle.properties | map(select(.type == "olm.package"))[0].value.version) as $version |
+        {
+            opName: $pkg.name,
+            defChan: $pkg.defaultChannel,
+            latestVersion: $version
+        }
+    ' <<< "$json_stream"
+}
+
+# Compares the KEEP list against the actual directories found after pruning and logs any missing operators.
+verify_operators_found() {
+    # Create an associative array for efficient lookup of found operator basenames.
+    declare -A found_operators
+    for dir_path in "$@"; do
+        if [[ -d "$dir_path" ]]; then
+            found_operators["$(basename "$dir_path")"]=1
+        fi
+    done
+
+    log_info "Verifying that all specified operators were found in the catalog..."
+    # Iterate over each operator in the KEEP variable.
+    echo "$KEEP" | tr '|' '\n' | while IFS= read -r operator; do
+        [[ -z "$operator" ]] && continue
+        
+        # Check if the operator from the KEEP list exists in our associative array of found directories.
+        if [[ ! -v "found_operators[$operator]" ]]; then
+            log_error "WARNING: Operator '$operator' from the KEEP list was not found in the catalog and will be skipped."
+        fi
+    done
+    log_info "Verification complete."
+}
+
+# Iterates through operator directories and processes them.
+process_operators() {
+    local output_filename="$1"
+
     local operator_dirs=("$TMP_DIR"/configs/*)
+    
+    # Verify that the operators we expect to find are actually present.
+    verify_operators_found "${operator_dirs[@]}"
+    
     local total_ops=${#operator_dirs[@]}
     local current_op=0
     
     log_info "Found $(find "$TMP_DIR/configs" -mindepth 1 -maxdepth 1 -type d | wc -l) operators to process."
     
     for operator_dir in "${operator_dirs[@]}"; do
-        ((current_op++))
+        let current_op+=1
         local operator_basename
         operator_basename=$(basename "$operator_dir")
         
@@ -250,15 +293,16 @@ process_catalog() {
         } >> "$output_filename"
     done
     
-    log_info "Successfully generated ImageSetConfiguration: $output_filename"
+    log_info "Successfully generated ImageSetConfiguration: $output_filename" "$C_GREEN"
 }
 
-# --- Main Execution ---
+
+# --- MAIN EXECUTION ---
 main() {
-    # Ensure cleanup runs on script exit or interruption
     trap cleanup EXIT
     
     check_dependencies
+    list_kept_operators
     
     if [ ${#CATALOGS[@]} -eq 0 ]; then
         log_error "No catalogs are defined. Please uncomment at least one catalog in the configuration section."
@@ -266,14 +310,24 @@ main() {
     fi
     
     for catalog_name in "${!CATALOGS[@]}"; do
-        process_catalog "$catalog_name" "${CATALOGS[$catalog_name]}"
+        local catalog_url="${CATALOGS[$catalog_name]}"
+        log_info ""
+        log_info "***************************************************************************" "$C_YELLOW"
+        log_info "Processing catalog: $catalog_name" "$C_YELLOW"
+        log_info "***************************************************************************" "$C_YELLOW"
+        
+        setup_and_prune_catalog "$catalog_url"
+        
+        local output_filename="$catalog_name-op-v$OCP_VERSION-config-$OCMIRRORVER-$(date +%Y%m%d-%H%M).yaml"
+        create_imageset_header "$output_filename" "$catalog_name" "$catalog_url"
+        
+        process_operators "$output_filename"
     done
     
     log_info ""
-    log_info "Script finished successfully."
+    log_info "Script finished successfully." "$C_GREEN"
 }
 
 # Run the main function
 main
 
-```
