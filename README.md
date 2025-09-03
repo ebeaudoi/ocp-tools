@@ -33,3 +33,7 @@ Edit the script and follow the instruction
   - imageset configuration file<br>
     "$catalog-op-v<ocp version>-config-<ocmirror version>-<date>.yaml"
 
+# **find-operator-allversion-defaultchannel.sh **
+### Description: 
+
+This script expands on the functionality of the original create-imagesetconfigfile.sh script<br> by identifying and including the full version range available in the default channel<br> for each operator specified in the KEEP variable, instead of only the single latest version.<br>
