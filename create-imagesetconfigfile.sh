@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION 20250902-1312
+# VERSION 20250903-1323
 # Updated to improve robustness, readability, and efficiency by refactoring into functions.
 # Added colorized output for better logging visibility.
 
