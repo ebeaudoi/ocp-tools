@@ -85,18 +85,38 @@ list_kept_operators() {
 # Ensures all required command-line tools are available.
 check_dependencies() {
     log_info "Checking for required tools..."
-    local missing_deps=0
-    for cmd in podman jq yq; do
-        if ! command -v "$cmd" &>/dev/null; then
-            log_error "Command '$cmd' is not installed, but it is required."
-            missing_deps=1
-        fi
-    done
+    local missing_deps=false
+    
+    # Check for podman
+    if ! command -v podman &>/dev/null; then
+        log_error "Command 'podman' is not installed, but it is required."
+        missing_deps=true
+    fi
+    
+    # Check for jq
+    if ! command -v jq &>/dev/null; then
+        log_error "Command 'jq' is not installed, but it is required."
+        missing_deps=true
+    fi
 
-    if [[ $missing_deps -eq 1 ]]; then
+    # Check for yq and provide detailed installation instructions if it's missing.
+    if ! command -v yq &>/dev/null; then
+        log_error "Command 'yq' is not installed, but it is required."
+        log_info "Please install 'yq' using the following steps:" "$C_YELLOW"
+        log_info "1. Download the latest yq binary (Linux amd64)"
+        log_info "   sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq"
+        log_info "2. Make it executable"
+        log_info "   sudo chmod +x /usr/local/bin/yq"
+        log_info "3. Verify installation"
+        log_info "   yq --version"
+        missing_deps=true
+    fi
+
+    if [[ "$missing_deps" == true ]]; then
         log_error "Please install missing dependencies and try again."
         exit 1
     fi
+    
     log_info "All dependencies are satisfied." "$C_GREEN"
 }
 
